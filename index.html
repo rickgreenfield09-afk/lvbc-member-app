@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LVBC">
+<meta name="theme-color" content="#0D1117">
+<title>LVBC Member App</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg-base: #0D1117;
+    --bg-surface: #161C26;
+    --bg-raised: #1E2733;
+    --accent-teal: #2AB8A6;
+    --accent-amber: #E8B84B;
+    --accent-red: #E05252;
+    --header-bg: #3E4E6C;
+    --text-primary: #F2EDE4;
+    --text-secondary: #8E92B0;
+    --text-muted: #5C607E;
+    --nav-highlight: #0A3D3A;
+    --border: #1E2733;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* LOGIN */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 28px;
+  }
+
+  .login-logo { width: 120px; height: 120px; object-fit: contain; margin-bottom: 12px; }
+  .login-brand { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 40px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .login-card { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; }
+  .login-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 20px; color: var(--text-secondary); }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px; }
+
+  input, select {
+    width: 100%; background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text-primary); font-family: 'Barlow', sans-serif;
+    font-size: 15px; padding: 13px 16px; outline: none; transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  input:focus, select:focus { border-color: var(--accent-teal); }
+  input::placeholder { color: var(--text-muted); }
+  input[type="file"] { padding: 10px; font-size: 13px; }
+
+  .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-family: 'Barlow', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; }
+  .btn-primary { background: var(--accent-teal); color: #0A0F15; }
+  .btn-primary:active { background: #22a094; }
+  .btn-secondary { background: var(--bg-raised); color: var(--text-primary); border: 1px solid var(--border); margin-top: 10px; }
+  .btn-sm { width: auto; padding: 8px 16px; font-size: 13px; border-radius: 8px; }
+  .btn-ghost { width: auto; padding: 6px 14px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer; font-family: 'Barlow', sans-serif; font-weight: 600; }
+  .btn-ghost:active { border-color: var(--accent-teal); color: var(--accent-teal); }
+
+  .alert { padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 500; margin-bottom: 14px; display: none; }
+  .alert.visible { display: block; }
+  .alert-error { background: rgba(224,82,82,0.15); border: 1px solid var(--accent-red); color: var(--accent-red); }
+  .alert-success { background: rgba(42,184,166,0.15); border: 1px solid var(--accent-teal); color: var(--accent-teal); }
+
+  /* APP SHELL */
+  #app-shell { display: none; flex-direction: column; min-height: 100vh; }
+  #app-shell.visible { display: flex; }
+
+  .app-header { background: var(--header-bg); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .app-header-left { display: flex; align-items: center; gap: 10px; }
+  .app-header-logo { width: 34px; height: 34px; object-fit: contain; }
+  .app-header-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .header-profile-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-raised); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; transition: border-color 0.15s; flex-shrink: 0; }
+  .header-profile-btn:active { border-color: var(--accent-teal); }
+  .header-profile-btn img { width: 100%; height: 100%; object-fit: cover; }
+
+  .app-content { flex: 1; overflow-y: auto; padding-bottom: calc(80px + var(--safe-bottom)); }
+
+  .tab-screen { display: none; padding: 20px; }
+  .tab-screen.active { display: block; }
+
+  /* BOTTOM NAV */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--bg-surface); border-top: 1px solid var(--border); display: flex; padding-bottom: var(--safe-bottom); z-index: 100; }
+  .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 4px 8px; cursor: pointer; color: var(--text-muted); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; gap: 4px; transition: color 0.15s; border-top: 2px solid transparent; margin-top: -1px; }
+  .nav-tab.active { color: var(--accent-teal); border-top-color: var(--accent-teal); }
+  .nav-tab svg { width: 22px; height: 22px; }
+
+  /* MY CARD */
+  .member-card { background: linear-gradient(135deg, #0A3D3A 0%, #1E2733 60%, #3E4E6C 100%); border: 1px solid var(--accent-teal); border-radius: 20px; padding: 24px; margin-bottom: 20px; position: relative; overflow: hidden; }
+  .member-card::before { content: ''; position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; background: rgba(42,184,166,0.08); border-radius: 50%; }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .card-member-name { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; line-height: 1.1; }
+  .tier-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+  .tier-free { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+  .tier-mug { background: rgba(42,184,166,0.2); color: var(--accent-teal); border: 1px solid rgba(42,184,166,0.4); }
+  .tier-coffee { background: rgba(232,184,75,0.2); color: var(--accent-amber); border: 1px solid rgba(232,184,75,0.4); }
+  .tier-fullpour { background: rgba(191,95,255,0.2); color: #bf5fff; border: 1px solid rgba(191,95,255,0.4); }
+
+  .qr-container { background: white; border-radius: 12px; padding: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  #qr-canvas { display: block; width: 160px !important; height: 160px !important; }
+
+  .points-row { display: flex; gap: 16px; }
+  .points-block { flex: 1; }
+  .points-val { font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 700; color: var(--accent-teal); line-height: 1; }
+  .points-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+  .reward-progress { margin-top: 12px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent-teal); border-radius: 3px; transition: width 0.5s ease; }
+
+  /* CHECKIN FLASH */
+  .checkin-flash { display: none; background: linear-gradient(135deg, var(--nav-highlight), #0D5C52); border: 1px solid var(--accent-teal); border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; animation: slideDown 0.3s ease; }
+  .checkin-flash.visible { display: block; }
+  @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+  .flash-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--accent-teal); margin-bottom: 4px; }
+  .flash-detail { font-size: 13px; color: var(--text-secondary); }
+  .flash-beers { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .flash-beer-item { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; }
+  .flash-beer-name { font-weight: 600; font-size: 14px; }
+  .flash-beer-style { font-size: 12px; color: var(--text-muted); }
+  .flash-beer-status { font-size: 12px; font-weight: 600; }
+  .poured { color: var(--accent-teal); }
+  .available { color: var(--accent-amber); }
+
+  /* ACTIVITY — badge strip + feed */
+  .activity-badge-strip { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 20px; }
+  .badge-strip-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .badge-strip-title { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+  .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .badge-slot { aspect-ratio: 1; border-radius: 10px; background: var(--bg-raised); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  .badge-slot img { width: 100%; height: 100%; object-fit: contain; }
+  .badge-slot.empty { opacity: 0.3; }
+  .badge-slot.empty::after { content: '?'; font-size: 24px; color: var(--text-muted); }
+  .badge-slot-label { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.6); font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 4px; text-align: center; color: var(--text-primary); }
+
+  .activity-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .activity-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--bg-raised); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+  .activity-details { flex: 1; min-width: 0; }
+  .activity-title { font-size: 14px; font-weight: 600; }
+  .activity-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .activity-sub { font-size: 12px; margin-top: 3px; font-weight: 500; }
+  .activity-pts { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--accent-teal); flex-shrink: 0; }
+
+  /* badge full grid styles used by badges page */
+  .badge-category-title { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .badge-category-title:first-child { margin-top: 0; }
+  .badges-full-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .badge-full-item { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .badge-full-item.earned { border-color: rgba(42,184,166,0.4); background: rgba(42,184,166,0.05); }
+  .badge-full-img { width: 56px; height: 56px; object-fit: contain; }
+  .badge-full-name { font-size: 11px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+  .badge-full-desc { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+  .badge-rarity { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+  .rarity-standard { color: var(--text-muted); }
+  .rarity-rare { color: var(--accent-amber); }
+  .rarity-exclusive { color: #bf5fff; }
+  .badge-locked { opacity: 0.35; filter: grayscale(1); }
+
+  /* ON TAP */
+  .tap-toggle { display: flex; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; margin-bottom: 20px; gap: 4px; }
+  .tap-toggle-btn { flex: 1; padding: 9px; border-radius: 7px; border: none; background: transparent; color: var(--text-muted); font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .tap-toggle-btn.active { background: var(--accent-teal); color: #0A0F15; }
+
+  .beer-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: border-color 0.15s; }
+  .beer-card.new-release { border-color: rgba(232,184,75,0.4); }
+  .beer-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .beer-card-left { display: flex; gap: 12px; align-items: flex-start; flex: 1; }
+  .beer-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: var(--bg-raised); flex-shrink: 0; border: 1px solid var(--border); }
+  .beer-thumb-placeholder { width: 48px; height: 48px; border-radius: 8px; background: var(--bg-raised); border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .beer-name { font-weight: 700; font-size: 15px; }
+  .beer-style { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .beer-desc { font-size: 13px; color: var(--text-secondary); margin-top: 8px; line-height: 1.5; }
+  .badge-new { background: rgba(232,184,75,0.15); color: var(--accent-amber); border: 1px solid rgba(232,184,75,0.4); border-radius: 4px; font-size: 9px; font-weight: 700; padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; margin-left: 8px; }
+  .badge-na { background: rgba(42,184,166,0.1); color: var(--accent-teal); border-radius: 4px; font-size: 9px; font-weight: 700; padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .beer-abv { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent-amber); }
+  .wine-price { font-size: 13px; color: var(--accent-teal); font-weight: 600; margin-top: 6px; }
+  .section-header { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  /* EVENTS */
+  .event-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; gap: 16px; }
+  .event-date-block { background: var(--header-bg); border-radius: 10px; padding: 10px 12px; text-align: center; min-width: 52px; flex-shrink: 0; }
+  .event-month { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); }
+  .event-day { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 700; line-height: 1; color: var(--accent-teal); }
+  .event-details { flex: 1; }
+  .event-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .event-meta { font-size: 12px; color: var(--text-muted); }
+  .event-pts { font-size: 12px; color: var(--accent-teal); font-weight: 600; margin-top: 4px; }
+  .event-release-badge { background: rgba(232,184,75,0.15); color: var(--accent-amber); border: 1px solid rgba(232,184,75,0.3); border-radius: 4px; font-size: 9px; font-weight: 700; padding: 2px 8px; text-transform: uppercase; display: inline-block; margin-top: 4px; }
+
+  /* REWARDS — collapsible */
+  .rewards-tier { margin-bottom: 8px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .rewards-tier-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; background: var(--bg-surface); user-select: none; }
+  .rewards-tier-header:active { background: var(--bg-raised); }
+  .tier-header-left { display: flex; align-items: center; gap: 10px; }
+  .tier-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-teal); flex-shrink: 0; }
+  .tier-header-label { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+  .tier-header-range { font-size: 12px; color: var(--text-muted); font-weight: 400; font-family: 'Barlow', sans-serif; }
+  .tier-chevron { color: var(--text-muted); transition: transform 0.2s; font-size: 14px; }
+  .tier-chevron.open { transform: rotate(180deg); }
+  .tier-body { display: none; padding: 0 12px 12px; background: var(--bg-surface); }
+  .tier-body.open { display: block; }
+  .reward-item { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .reward-item.locked { opacity: 0.5; }
+  .reward-name { font-weight: 600; font-size: 14px; }
+  .reward-pts { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--accent-teal); white-space: nowrap; }
+  .reward-pts.locked { color: var(--text-muted); }
+  .reward-pts.can-redeem { color: var(--accent-amber); }
+
+  /* PROFILE */
+  .profile-avatar-section { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .profile-avatar { width: 72px; height: 72px; border-radius: 50%; border: 2px solid var(--border); object-fit: cover; background: var(--bg-raised); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; overflow: hidden; }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-avatar-upload { flex: 1; }
+  .profile-avatar-upload label { display: block; font-size: 12px; color: var(--accent-teal); font-weight: 600; cursor: pointer; margin-bottom: 4px; }
+  .profile-avatar-upload p { font-size: 11px; color: var(--text-muted); }
+  #avatar-file-input { display: none; }
+
+  .profile-section { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .profile-section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 16px; }
+
+  .comms-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .comms-row:last-child { border-bottom: none; }
+  .comms-label { font-size: 14px; font-weight: 500; }
+  .comms-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle input { display: none; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 12px; cursor: pointer; transition: 0.2s; }
+  .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; background: var(--text-secondary); border-radius: 50%; top: 3px; left: 3px; transition: 0.2s; }
+  .toggle input:checked + .toggle-slider { background: rgba(42,184,166,0.3); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--accent-teal); }
+
+  .style-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .style-chip { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); font-size: 13px; cursor: pointer; transition: all 0.15s; background: var(--bg-raised); color: var(--text-secondary); }
+  .style-chip.selected { background: rgba(42,184,166,0.15); border-color: var(--accent-teal); color: var(--accent-teal); }
+
+  .logout-btn { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--accent-red); background: transparent; color: var(--accent-red); font-family: 'Barlow', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+
+  .reward-goal-selector { margin-top: 12px; }
+  .reward-goal-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .reward-goal-select { width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(42,184,166,0.3); border-radius: 8px; color: var(--text-primary); font-family: 'Barlow', sans-serif; font-size: 13px; padding: 8px 10px; outline: none; -webkit-appearance: none; }
+  .reward-goal-select option { background: #1E2733; }
+  .reward-goal-empty { font-size: 12px; color: var(--text-muted); font-style: italic; margin-top: 10px; text-align: center; }
+
+  /* BADGES PAGE */
+  #tab-badges { padding-bottom: 20px; }
+  .badges-page-back { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent-teal); cursor: pointer; padding: 4px 0 16px; }
+  .badge-cat-block { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+  .badge-cat-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; user-select: none; }
+  .badge-cat-header:active { background: var(--bg-raised); }
+  .badge-cat-left { display: flex; align-items: center; gap: 10px; }
+  .badge-cat-name { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .badge-cat-count { font-size: 12px; color: var(--accent-teal); font-weight: 600; background: rgba(42,184,166,0.1); padding: 2px 8px; border-radius: 10px; }
+  .badge-cat-chevron { color: var(--text-muted); font-size: 14px; transition: transform 0.2s; }
+  .badge-cat-chevron.open { transform: rotate(180deg); }
+  .badge-cat-body { display: none; padding: 0 12px 12px; }
+  .badge-cat-body.open { display: block; }
+
+  /* LEADERBOARD */
+  .leaderboard-section { margin-top: 24px; }
+  .leaderboard-header { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .lb-toggle { display: flex; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 3px; margin-bottom: 14px; gap: 3px; }
+  .lb-toggle-btn { flex: 1; padding: 7px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .lb-toggle-btn.active { background: var(--accent-teal); color: #0A0F15; }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; color: var(--text-muted); width: 32px; text-align: center; flex-shrink: 0; }
+  .lb-rank.gold { color: #FFD700; }
+  .lb-rank.silver { color: #C0C0C0; }
+  .lb-rank.bronze { color: #CD7F32; }
+  .lb-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-raised); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; overflow: hidden; }
+  .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .lb-name { flex: 1; font-weight: 600; font-size: 14px; }
+  .lb-name.you { color: var(--accent-teal); }
+  .lb-pts { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--text-secondary); }
+  ::-webkit-scrollbar { width: 0; }
+  .empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; }
+  select option { background: var(--bg-raised); }
+
+  @keyframes pulse-border {
+    0% { border-color: var(--accent-teal); }
+    50% { border-color: rgba(42,184,166,0.3); }
+    100% { border-color: var(--accent-teal); }
+  }
+  .pulse { animation: pulse-border 1s ease 3; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <img class="login-logo" src="https://opsplpqvordihoktuqzp.supabase.co/storage/v1/object/public/assets/lvbc-logo.png" alt="LVBC Logo" onerror="this.style.opacity='0'">
+  <div class="login-brand">Lago Vista<br>Brewing Co.</div>
+  <div class="login-sub">Member App</div>
+  <div class="login-card" id="login-card">
+    <div class="login-title">Sign In</div>
+    <div id="login-alert" class="alert"></div>
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">4-Digit PIN</label>
+      <input type="tel" id="login-pin" placeholder="••••" maxlength="4" inputmode="numeric">
+    </div>
+    <button class="btn btn-primary" onclick="handleLogin()">Sign In</button>
+  </div>
+  <div class="login-card" id="pin-setup-card" style="display:none">
+    <div class="login-title">Set Your PIN</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">Create a 4-digit PIN to sign in quickly next time.</p>
+    <div id="pin-alert" class="alert"></div>
+    <div class="form-group">
+      <label class="form-label">New PIN</label>
+      <input type="tel" id="pin-new" placeholder="Enter 4 digits" maxlength="4" inputmode="numeric">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm PIN</label>
+      <input type="tel" id="pin-confirm" placeholder="Confirm PIN" maxlength="4" inputmode="numeric">
+    </div>
+    <button class="btn btn-primary" onclick="savePin()">Set PIN & Continue</button>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app-shell">
+  <header class="app-header">
+    <div class="app-header-left">
+      <img class="app-header-logo" src="https://opsplpqvordihoktuqzp.supabase.co/storage/v1/object/public/assets/lvbc-logo.png" alt="LVBC" onerror="this.style.opacity='0'">
+      <div class="app-header-title" id="app-header-title">LVBC</div>
+    </div>
+    <div class="header-profile-btn" onclick="showTab('profile')" id="header-avatar-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+  </header>
+
+  <div class="app-content">
+
+    <!-- MY CARD -->
+    <div class="tab-screen active" id="tab-card">
+      <div id="checkin-flash" class="checkin-flash">
+        <div class="flash-title">👋 Welcome back!</div>
+        <div class="flash-detail" id="flash-detail">You just earned <strong id="flash-pts" style="color:var(--accent-teal)">0</strong> points</div>
+        <div class="flash-beers" id="flash-beers"></div>
+      </div>
+      <div class="member-card">
+        <div class="card-header">
+          <div>
+            <div class="card-member-name" id="card-name">—</div>
+            <div class="tier-badge" id="card-tier">—</div>
+          </div>
+        </div>
+        <div id="qr-wrapper" style="display:flex;justify-content:center;margin-bottom:4px">
+          <div class="qr-container"><canvas id="qr-canvas"></canvas></div>
+        </div>
+        <div class="points-row">
+          <div class="points-block">
+            <div class="points-val" id="card-balance">0</div>
+            <div class="points-label">Points Balance</div>
+          </div>
+          <div class="points-block">
+            <div class="points-val" id="card-lifetime" style="color:var(--text-secondary)">0</div>
+            <div class="points-label">Lifetime Earned</div>
+          </div>
+        </div>
+        <div class="reward-progress" id="reward-progress-section">
+          <div class="progress-label">
+            <span id="progress-label">Select a reward to track your progress</span>
+            <span id="progress-pct"></span>
+          </div>
+          <div class="progress-bar" id="progress-bar-wrap" style="display:none"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+          <div class="reward-goal-selector">
+            <div class="reward-goal-label">Reward Goal</div>
+            <select class="reward-goal-select" id="reward-goal-select" onchange="saveRewardGoal(this.value)">
+              <option value="">— Select a reward to track —</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-title">Member Since</div>
+        <div style="font-size:14px;color:var(--text-secondary)" id="card-since">—</div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div class="tab-screen" id="tab-activity">
+      <!-- Badge strip — top 1/3 -->
+      <div class="activity-badge-strip">
+        <div class="badge-strip-header">
+          <div class="badge-strip-title">Recently Earned Badges</div>
+          <button class="btn-ghost" onclick="showTab('badges')">View All →</button>
+        </div>
+        <div class="badge-grid" id="badge-strip-grid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+      <!-- Activity feed — bottom 2/3 -->
+      <div id="activity-list">
+        <div class="empty">Loading activity...</div>
+      </div>
+    </div>
+
+    <!-- ON TAP -->
+    <div class="tab-screen" id="tab-tap">
+      <div class="tap-toggle">
+        <button class="tap-toggle-btn active" onclick="setTapView('beer', this)">🍺 Beer</button>
+        <button class="tap-toggle-btn" onclick="setTapView('wine', this)">🍷 Wine</button>
+        <button class="tap-toggle-btn" onclick="setTapView('na', this)">🥤 N/A</button>
+      </div>
+      <div id="tap-beer-view"></div>
+      <div id="tap-wine-view" style="display:none"></div>
+      <div id="tap-na-view" style="display:none"></div>
+    </div>
+
+    <!-- EVENTS -->
+    <div class="tab-screen" id="tab-events">
+      <div id="events-list"><div class="empty">Loading events...</div></div>
+    </div>
+
+    <!-- REWARDS -->
+    <div class="tab-screen" id="tab-rewards">
+      <div id="rewards-content"><div class="empty">Loading...</div></div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="tab-screen" id="tab-profile">
+      <div class="profile-section">
+        <div class="profile-section-title">Profile Photo</div>
+        <div class="profile-avatar-section">
+          <div class="profile-avatar" id="profile-avatar-display">
+            <span id="profile-avatar-initials">?</span>
+          </div>
+          <div class="profile-avatar-upload">
+            <label for="avatar-file-input">📷 Upload new photo</label>
+            <p>JPG or PNG, shown on your leaderboard profile</p>
+            <input type="file" id="avatar-file-input" accept="image/*" onchange="uploadAvatar(this)">
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">Personal Info</div>
+        <div id="profile-alert" class="alert"></div>
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input type="text" id="prof-name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" id="prof-phone">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Birthday</label>
+          <input type="date" id="prof-birthday">
+        </div>
+        <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">Beer Style Preferences</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">We'll surface new beers that match your taste.</p>
+        <div class="style-chips" id="style-chips"></div>
+        <button class="btn-ghost" style="margin-top:16px" onclick="saveStyles()">Save Preferences</button>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">Communications</div>
+        <div class="comms-row">
+          <div><div class="comms-label">All Notifications</div><div class="comms-desc">Master toggle</div></div>
+          <label class="toggle"><input type="checkbox" id="comms-opt-in" onchange="saveComms()"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="comms-row">
+          <div><div class="comms-label">Events</div><div class="comms-desc">Trivia, bingo, karaoke, special events</div></div>
+          <label class="toggle"><input type="checkbox" id="comms-events" onchange="saveComms()"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="comms-row">
+          <div><div class="comms-label">New Releases</div><div class="comms-desc">When a new beer hits the tap list</div></div>
+          <label class="toggle"><input type="checkbox" id="comms-releases" onchange="saveComms()"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="comms-row">
+          <div><div class="comms-label">Promotions</div><div class="comms-desc">Thrifty Thursday, flash rewards, deals</div></div>
+          <label class="toggle"><input type="checkbox" id="comms-promos" onchange="saveComms()"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">Security</div>
+        <button class="btn btn-secondary" onclick="showChangePIN()">Change PIN</button>
+      </div>
+
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+      <div style="height:20px"></div>
+    </div>
+
+    <!-- BADGES PAGE (off-menu) -->
+    <div class="tab-screen" id="tab-badges">
+      <div class="badges-page-back" onclick="showTab('activity')">← Back to Activity</div>
+      <div id="badges-page-content"><div class="empty">Loading badges...</div></div>
+      <div class="leaderboard-section">
+        <div class="leaderboard-header">🏆 Leaderboard</div>
+        <div class="lb-toggle">
+          <button class="lb-toggle-btn active" id="lb-btn-month" onclick="setLeaderboard('month', this)">This Month</button>
+          <button class="lb-toggle-btn" id="lb-btn-alltime" onclick="setLeaderboard('alltime', this)">All Time</button>
+        </div>
+        <div id="leaderboard-list"><div class="empty">Loading...</div></div>
+      </div>
+    </div>
+
+  </div><!-- end app-content -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <div class="nav-tab active" onclick="showTab('card')" id="nav-card">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      My Card
+    </div>
+    <div class="nav-tab" onclick="showTab('activity')" id="nav-activity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Activity
+    </div>
+    <div class="nav-tab" onclick="showTab('tap')" id="nav-tap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3M12 3v3M16 3v3M7 6h10l1 14H6L7 6z"/></svg>
+      On Tap
+    </div>
+    <div class="nav-tab" onclick="showTab('events')" id="nav-events">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Events
+    </div>
+    <div class="nav-tab" onclick="showTab('rewards')" id="nav-rewards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Rewards
+    </div>
+  </nav>
+</div>
+
+<!-- badges modal removed — now a full page at tab-badges -->
+
+<script>
+const SUPABASE_URL = 'https://opsplpqvordihoktuqzp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wc3BscHF2b3JkaWhva3R1cXpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTI0MjMsImV4cCI6MjA5MjM2ODQyM30.SIYWZXqM3o-6q1EdEBn-IpdG90JrLBZbbiNrjj6AG7Y';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const LOGO_URL = 'https://opsplpqvordihoktuqzp.supabase.co/storage/v1/object/public/assets/lvbc-logo.png';
+const BADGE_BASE = 'https://opsplpqvordihoktuqzp.supabase.co/storage/v1/object/public/assets/badges/';
+const BEER_PLACEHOLDER = 'https://opsplpqvordihoktuqzp.supabase.co/storage/v1/object/public/assets/beer-placeholder.png';
+
+let currentMember = null;
+let pendingEmail = null;
+let realtimeChannel = null;
+let memberBadges = [];
+let allEvents = [];
+let selectedGoal = null;
+
+const REWARD_GOALS = [
+  { label: 'Treasure box pick', pts: 100 },
+  { label: 'Sticker pack', pts: 100 },
+  { label: 'Snack item', pts: 150 },
+  { label: 'Koozie', pts: 150 },
+  { label: 'Pick a trivia category', pts: 250 },
+  { label: 'Pick music bingo theme', pts: 250 },
+  { label: 'Wall of Regulars', pts: 300 },
+  { label: 'Early RSVP access', pts: 350 },
+  { label: 'LVBC pint glass', pts: 400 },
+  { label: 'Free snack up to $10', pts: 400 },
+  { label: 'Choose next staff pick', pts: 500 },
+  { label: 'LVBC t-shirt', pts: 750, paid: true },
+  { label: 'LVBC hat/cap', pts: 750, paid: true },
+  { label: 'Growler (branded)', pts: 750, paid: true },
+  { label: 'LVBC U There — $10 off', pts: 800, paid: true },
+  { label: 'LVBC hoodie', pts: 1000, paid: true },
+  { label: 'Private tasting + 3 friends', pts: 1500, paid: true },
+  { label: 'VIP table at special event', pts: 1500, paid: true },
+  { label: 'Custom LVBC item', pts: 2000, paid: true },
+  { label: 'LVBC U There — comped ticket', pts: 2000, paid: true },
+  { label: 'Host private taproom event', pts: 2500, paid: true },
+  { label: 'Limestone wall inscription', pts: 5000, paid: true },
+  { label: 'Brew day experience', pts: 5000, paid: true },
+  { label: 'Anniversary party invite', pts: 5000, paid: true },
+];
+
+const BEER_STYLES = ['IPA', 'Stout', 'Amber/Red', 'Wheat/Wit', 'Lager/Pilsner', 'Sour/Wild Ale', 'Belgian', 'Session (<5%)', 'High ABV (8%+)'];
+
+// REWARD_GOALS drives the card progress selector (see below)
+
+// Badge catalog — drawn from taxonomy
+const BADGE_CATALOG = [
+  { category: 'Explorer', name: 'Hop Head', desc: 'Try 5 unique IPAs', rarity: 'Standard', file: 'badge-hop_head.png' },
+  { category: 'Explorer', name: 'Dark Side', desc: 'Try 5 unique stouts', rarity: 'Standard', file: null },
+  { category: 'Explorer', name: 'Lager Loyalist', desc: 'Try 5 unique lagers', rarity: 'Standard', file: null },
+  { category: 'Explorer', name: 'Sour Power', desc: 'Try 5 unique sours', rarity: 'Standard', file: null },
+  { category: 'Explorer', name: 'First Sip', desc: 'Log your first beer', rarity: 'Standard', file: null },
+  { category: 'Explorer', name: 'Explorer 10', desc: '10 unique LVBC beers tried', rarity: 'Standard', file: null },
+  { category: 'Seasonal', name: 'Spring Sipper', desc: 'Check in 4+ times Mar–May', rarity: 'Rare', file: 'badge-spring_sipper.png' },
+  { category: 'Seasonal', name: 'Summer Regular', desc: 'Check in 6+ times Jun–Aug', rarity: 'Rare', file: 'badge-summer_regular.png' },
+  { category: 'Seasonal', name: 'Fall Faithful', desc: 'Check in 4+ times Sep–Nov', rarity: 'Rare', file: 'badge-fall_faithful.png' },
+  { category: 'Seasonal', name: 'Winter Warmer', desc: 'Check in 4+ times Dec–Feb', rarity: 'Rare', file: 'badge-winter_warmer.png' },
+  { category: 'Seasonal', name: 'Four Seasons', desc: 'Earn all four seasonal badges', rarity: 'Exclusive', file: 'badge-four_seasons.png' },
+  { category: 'Milestone', name: 'Welcome Mat', desc: 'First ever check-in', rarity: 'Standard', file: null },
+  { category: 'Milestone', name: 'Regular (10)', desc: '10 lifetime check-ins', rarity: 'Standard', file: null },
+  { category: 'Milestone', name: 'Local (25)', desc: '25 lifetime check-ins', rarity: 'Standard', file: null },
+  { category: 'Milestone', name: 'Streak Starter', desc: 'Complete a 4-week visit streak', rarity: 'Standard', file: null },
+  { category: 'Milestone', name: 'One Year Strong', desc: '1-year membership anniversary', rarity: 'Standard', file: null },
+  { category: 'Membership', name: 'Mug Club Member', desc: 'Active Mug Club membership', rarity: 'Standard', file: null },
+  { category: 'Membership', name: 'Coffee Club Member', desc: 'Active Coffee Club membership', rarity: 'Standard', file: null },
+  { category: 'Membership', name: 'Full Pour Member', desc: 'Active Full Pour membership', rarity: 'Standard', file: null },
+  { category: 'Event', name: 'First Timer', desc: 'Attend your first event', rarity: 'Standard', file: null },
+  { category: 'Event', name: 'Regular', desc: 'Attend 10 scheduled events', rarity: 'Standard', file: null },
+  { category: 'Event', name: 'Lucky Break', desc: 'Win your first trivia or bingo', rarity: 'Standard', file: null },
+  { category: 'Social', name: 'Ambassador', desc: 'Refer your first signup', rarity: 'Standard', file: null },
+  { category: 'Social', name: 'Profile Complete', desc: 'Complete taste profile & photo', rarity: 'Standard', file: null },
+];
+
+// ─── INIT ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('lvbc_member_id');
+  if (saved) loadMemberAndShow(parseInt(saved));
+});
+
+// ─── AUTH ─────────────────────────────────────────────
+async function handleLogin() {
+  try {
+    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const pin = document.getElementById('login-pin').value.trim();
+    if (!email) { showLoginAlert('error', 'Enter your email address'); return; }
+    const { data: member, error } = await sb.from('members').select('*').eq('email', email).maybeSingle();
+    if (error) { showLoginAlert('error', 'Error: ' + error.message); return; }
+    if (!member) { showLoginAlert('error', 'No account found with that email'); return; }
+    if (!member.pin) {
+      pendingEmail = email;
+      document.getElementById('login-card').style.display = 'none';
+      document.getElementById('pin-setup-card').style.display = 'block';
+      return;
+    }
+    if (!pin) { showLoginAlert('error', 'Enter your PIN'); return; }
+    if (String(member.pin) !== String(pin)) { showLoginAlert('error', 'Incorrect PIN'); return; }
+    localStorage.setItem('lvbc_member_id', member.id);
+    await loadMemberAndShow(member.id);
+  } catch(e) {
+    showLoginAlert('error', 'Login error: ' + e.message);
+  }
+}
+
+async function savePin() {
+  const p1 = document.getElementById('pin-new').value.trim();
+  const p2 = document.getElementById('pin-confirm').value.trim();
+  if (p1.length !== 4 || isNaN(p1)) { showPinAlert('error', 'PIN must be exactly 4 digits'); return; }
+  if (p1 !== p2) { showPinAlert('error', 'PINs do not match'); return; }
+  const { data: member } = await sb.from('members').select('*').eq('email', pendingEmail).single();
+  await sb.from('members').update({ pin: p1 }).eq('id', member.id);
+  localStorage.setItem('lvbc_member_id', member.id);
+  await loadMemberAndShow(member.id);
+}
+
+async function loadMemberAndShow(id) {
+  try {
+    const { data: m, error } = await sb.from('members').select('*').eq('id', id).single();
+    if (error || !m) { localStorage.removeItem('lvbc_member_id'); return; }
+    currentMember = m;
+
+    const { data: evts } = await sb.from('events').select('event_date, title, event_type').order('event_date');
+    allEvents = evts || [];
+
+    const { data: mb } = await sb.from('member_badges').select('*, badges(name, category)').eq('member_id', id);
+    memberBadges = mb || [];
+
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-shell').classList.add('visible');
+    await renderCard();
+    loadActivity();
+    loadTapList();
+    loadEvents();
+    renderRewards();
+    populateProfile();
+    subscribeRealtime();
+  } catch(e) {
+    console.error('loadMemberAndShow error:', e);
+    localStorage.removeItem('lvbc_member_id');
+  }
+}
+
+function logout() {
+  localStorage.removeItem('lvbc_member_id');
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  currentMember = null;
+  document.getElementById('app-shell').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pin').value = '';
+  document.getElementById('login-card').style.display = 'block';
+  document.getElementById('pin-setup-card').style.display = 'none';
+}
+
+// ─── REALTIME ─────────────────────────────────────────
+function subscribeRealtime() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  realtimeChannel = sb.channel('member-checkins-' + currentMember.id)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'check_ins', filter: `member_id=eq.${currentMember.id}` },
+      async (payload) => {
+        const { data: m } = await sb.from('members').select('*').eq('id', currentMember.id).single();
+        if (m) { currentMember = m; await renderCard(); await showCheckinFlash(payload.new); }
+      })
+    .subscribe();
+}
+
+async function showCheckinFlash(checkin) {
+  document.getElementById('flash-pts').textContent = checkin.points_awarded || 0;
+  document.getElementById('flash-detail').innerHTML = `You just earned <strong style="color:var(--accent-teal)">${checkin.points_awarded || 0} points</strong> · Balance: ${currentMember.points_balance?.toLocaleString()}`;
+  const { data: newReleases } = await sb.from('beers').select('*').eq('is_on_tap', true).eq('is_new_release', true).eq('retired', false);
+  const { data: poured } = await sb.from('free_pours').select('beer_id').eq('member_id', currentMember.id);
+  const pouredIds = poured?.map(p => p.beer_id) || [];
+  const flashBeers = document.getElementById('flash-beers');
+  if (newReleases?.length) {
+    flashBeers.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:4px">New Releases on Tap</div>' +
+      newReleases.map(b => `<div class="flash-beer-item">
+        <div><div class="flash-beer-name">${b.name}</div><div class="flash-beer-style">${b.style}</div></div>
+        <div class="flash-beer-status ${pouredIds.includes(b.id) ? 'poured' : 'available'}">${pouredIds.includes(b.id) ? '✓ Poured' : '★ Available'}</div>
+      </div>`).join('');
+  } else { flashBeers.innerHTML = ''; }
+  showTab('card');
+  document.getElementById('checkin-flash').classList.add('visible', 'pulse');
+  setTimeout(() => document.getElementById('checkin-flash').classList.remove('visible'), 12000);
+}
+
+// ─── RENDER CARD ──────────────────────────────────────
+async function renderCard() {
+  const m = currentMember;
+  document.getElementById('card-name').textContent = m.name;
+  document.getElementById('card-balance').textContent = m.points_balance?.toLocaleString() || '0';
+  document.getElementById('card-lifetime').textContent = m.points_earned_lifetime?.toLocaleString() || '0';
+  document.getElementById('card-since').textContent = m.joined_at ? new Date(m.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '—';
+  const tierEl = document.getElementById('card-tier');
+  tierEl.textContent = m.tier;
+  tierEl.className = 'tier-badge ' + tierClass(m.tier);
+
+  const bal = m.points_balance || 0;
+  const isPaid = ['Mug Club', 'Coffee Club', 'Full Pour'].includes(m.tier);
+
+  // Populate reward goal dropdown
+  const select = document.getElementById('reward-goal-select');
+  const savedGoal = localStorage.getItem('lvbc_reward_goal_' + m.id);
+  select.innerHTML = '<option value="">— Select a reward to track —</option>' +
+    REWARD_GOALS
+      .filter(g => !g.paid || isPaid)
+      .map(g => `<option value="${g.pts}|${g.label}" ${savedGoal === `${g.pts}|${g.label}` ? 'selected' : ''}>${g.label} (${g.pts.toLocaleString()} pts)</option>`)
+      .join('');
+
+  // Render progress toward selected goal
+  const progressLabel = document.getElementById('progress-label');
+  const progressPct = document.getElementById('progress-pct');
+  const progressBar = document.getElementById('progress-bar-wrap');
+  const progressFill = document.getElementById('progress-fill');
+
+  if (savedGoal) {
+    const parts = savedGoal.split('|');
+    const goalPts = parseInt(parts[0]);
+    const label = parts.slice(1).join('|');
+    if (bal >= goalPts) {
+      progressLabel.textContent = `✓ You can redeem: ${label}`;
+      progressLabel.style.color = 'var(--accent-teal)';
+      progressPct.textContent = '100%';
+      progressBar.style.display = 'block';
+      progressFill.style.width = '100%';
+    } else {
+      const pct = Math.min(100, Math.round((bal / goalPts) * 100));
+      progressLabel.textContent = `${(goalPts - bal).toLocaleString()} pts to ${label}`;
+      progressLabel.style.color = '';
+      progressPct.textContent = pct + '%';
+      progressBar.style.display = 'block';
+      progressFill.style.width = pct + '%';
+    }
+  } else {
+    progressLabel.textContent = 'Select a reward to track your progress';
+    progressLabel.style.color = 'var(--text-muted)';
+    progressPct.textContent = '';
+    progressBar.style.display = 'none';
+  }
+
+  // QR code — always reconstruct container to avoid stale canvas
+  const qrWrapper = document.getElementById('qr-wrapper');
+  const { data: token } = await sb.from('qr_tokens').select('token').eq('member_id', m.id).order('id', { ascending: false }).limit(1).maybeSingle();
+  if (token && token.token) {
+    try {
+      const url = await QRCode.toDataURL(token.token, { width: 160, margin: 1, color: { dark: '#000000', light: '#FFFFFF' } });
+      qrWrapper.innerHTML = '<div class="qr-container"><img src="' + url + '" style="width:160px;height:160px;display:block;border-radius:4px"></div>';
+    } catch(e) {
+      qrWrapper.innerHTML = '<div class="qr-container"><div style="width:160px;height:160px;display:flex;align-items:center;justify-content:center;color:#888;font-size:11px">QR error: ' + e.message + '</div></div>';
+    }
+  } else {
+    qrWrapper.innerHTML = '<div class="qr-container"><div style="width:160px;height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#888;font-size:12px;text-align:center;padding:12px">No QR token<br><span style=\'font-size:10px;margin-top:4px\'>Contact staff</span></div></div>';
+  }
+}
+
+function saveRewardGoal(val) {
+  if (val) {
+    localStorage.setItem('lvbc_reward_goal_' + currentMember.id, val);
+  } else {
+    localStorage.removeItem('lvbc_reward_goal_' + currentMember.id);
+  }
+  renderCard();
+}
+
+// ─── ACTIVITY ─────────────────────────────────────────
+async function loadActivity() {
+  // Load check-ins
+  const { data: checkins } = await sb.from('check_ins')
+    .select('*')
+    .eq('member_id', currentMember.id)
+    .order('checked_in_at', { ascending: false })
+    .limit(50);
+
+  // Load free pours with beer details
+  const { data: freePours } = await sb.from('free_pours')
+    .select('*, beers(name, style)')
+    .eq('member_id', currentMember.id)
+    .order('poured_at', { ascending: false })
+    .limit(50);
+
+  // Build event date lookup map (date string → event)
+  const eventMap = {};
+  allEvents.forEach(e => { eventMap[e.event_date] = e; });
+
+  // Build free pour map keyed by date
+  const pourMap = {};
+  (freePours || []).forEach(p => {
+    if (!p.poured_at) return;
+    const d = p.poured_at.split('T')[0];
+    if (!pourMap[d]) pourMap[d] = [];
+    pourMap[d].push(p);
+  });
+
+  // Render badge strip
+  renderBadgeStrip();
+
+  const el = document.getElementById('activity-list');
+
+  // Build unified feed: check-ins + any free pours that don't have a same-day check-in
+  const allItems = [];
+
+  const checkinDates = new Set((checkins || []).map(c => c.checked_in_at.split('T')[0]));
+
+  // Add check-ins
+  (checkins || []).forEach(c => {
+    const dateStr = c.checked_in_at.split('T')[0];
+    const event = eventMap[dateStr];
+    const day = new Date(c.checked_in_at).getDay();
+    const isBonus = day === 3 || day === 4;
+
+    let icon = '📍';
+    let title = 'Check-In';
+    let subLines = [];
+
+    if (event) {
+      icon = eventIcon(event.event_type);
+      title = 'Check-In · ' + event.title;
+    } else if (isBonus) {
+      title = 'Check-In · Bonus Night';
+    }
+
+    // Attach free pours from this same day
+    const dayPours = pourMap[dateStr] || [];
+    dayPours.forEach(p => {
+      if (p.beers) {
+        subLines.push('<div class="activity-sub" style="color:var(--accent-amber)">🍺 Free pour — ' + p.beers.name + ' (' + (p.beers.style || '') + ')</div>');
+      }
+    });
+
+    // Also check the legacy free_pour_beer text field on check_in
+    if (c.free_pour_beer && !dayPours.length) {
+      subLines.push('<div class="activity-sub" style="color:var(--accent-amber)">🍺 Free pour — ' + c.free_pour_beer + '</div>');
+    }
+
+    allItems.push({
+      ts: new Date(c.checked_in_at).getTime(),
+      html: '<div class="activity-item"><div class="activity-icon">' + icon + '</div><div class="activity-details"><div class="activity-title">' + title + '</div><div class="activity-meta">' + formatDate(c.checked_in_at) + '</div>' + subLines.join('') + '</div><div class="activity-pts">+' + (c.points_awarded || 0) + '</div></div>'
+    });
+  });
+
+  // Add free pours that have no matching check-in date (standalone pours)
+  Object.entries(pourMap).forEach(([dateStr, pours]) => {
+    if (checkinDates.has(dateStr)) return; // already handled above
+    pours.forEach(p => {
+      if (!p.beers) return;
+      allItems.push({
+        ts: new Date(p.poured_at).getTime(),
+        html: '<div class="activity-item"><div class="activity-icon">🍺</div><div class="activity-details"><div class="activity-title">Free Pour</div><div class="activity-meta">' + formatDate(p.poured_at) + '</div><div class="activity-sub" style="color:var(--accent-amber)">' + p.beers.name + ' (' + (p.beers.style || '') + ')</div></div><div class="activity-pts" style="color:var(--accent-amber)">🍺</div></div>'
+      });
+    });
+  });
+
+  // Sort by timestamp descending
+  allItems.sort((a, b) => b.ts - a.ts);
+
+  if (!allItems.length) {
+    el.innerHTML = '<div class="empty">No activity yet — visit us to get started!</div>';
+    return;
+  }
+
+  el.innerHTML = allItems.map(i => i.html).join('');
+}
+
+function eventIcon(type) {
+  if (!type) return '🎉';
+  const t = type.toLowerCase();
+  if (t.includes('trivia')) return '🧠';
+  if (t.includes('bingo')) return '🎱';
+  if (t.includes('karaoke')) return '🎤';
+  if (t.includes('market') || t.includes('farmer')) return '🌿';
+  if (t.includes('release') || t.includes('beer')) return '🍺';
+  return '🎉';
+}
+
+// ─── BADGE STRIP ──────────────────────────────────────
+function renderBadgeStrip() {
+  const grid = document.getElementById('badge-strip-grid');
+  // Show last 6 earned badges, fill rest with empty slots
+  const recent = memberBadges.slice(-6).reverse();
+  const slots = [];
+  for (let i = 0; i < 6; i++) {
+    const mb = recent[i];
+    if (mb) {
+      const badgeDef = BADGE_CATALOG.find(b => b.name === mb.badges?.name);
+      const imgUrl = badgeDef?.file ? BADGE_BASE + badgeDef.file : null;
+      slots.push(`<div class="badge-slot" title="${mb.badges?.name || ''}">
+        ${imgUrl ? `<img src="${imgUrl}" onerror="this.parentElement.innerHTML='🏅'">` : '<span style="font-size:22px">🏅</span>'}
+        <div class="badge-slot-label">${(mb.badges?.name || '').split(' ').slice(0,2).join(' ')}</div>
+      </div>`);
+    } else {
+      slots.push(`<div class="badge-slot empty"></div>`);
+    }
+  }
+  grid.innerHTML = slots.join('');
+}
+
+// ─── BADGES PAGE ──────────────────────────────────────
+function renderBadgesPage() {
+  const earnedNames = new Set(memberBadges.map(mb => mb.badges?.name).filter(Boolean));
+  const categories = [...new Set(BADGE_CATALOG.map(b => b.category))];
+  let html = '';
+  categories.forEach(cat => {
+    const catBadges = BADGE_CATALOG.filter(b => b.category === cat);
+    const earnedCount = catBadges.filter(b => earnedNames.has(b.name)).length;
+    html += '<div class="badge-cat-block">';
+    html += '<div class="badge-cat-header" onclick="toggleBadgeCat(this)">';
+    html += '<div class="badge-cat-left"><div class="badge-cat-name">' + cat + '</div>' +
+            (earnedCount > 0 ? '<div class="badge-cat-count">' + earnedCount + ' earned</div>' : '') + '</div>';
+    html += '<div class="badge-cat-chevron">▼</div></div>';
+    html += '<div class="badge-cat-body"><div class="badges-full-grid">';
+    catBadges.forEach(b => {
+      const earned = earnedNames.has(b.name);
+      const imgUrl = b.file ? BADGE_BASE + b.file : null;
+      const rarityClass = b.rarity === 'Exclusive' ? 'rarity-exclusive' : b.rarity === 'Rare' ? 'rarity-rare' : 'rarity-standard';
+      html += '<div class="badge-full-item ' + (earned ? 'earned' : '') + '">';
+      html += '<div class="' + (earned ? '' : 'badge-locked') + '" style="font-size:0">';
+      if (imgUrl) {
+        html += '<img class="badge-full-img" src="' + imgUrl + '" onerror="this.style.display=\'none\'">';
+      } else {
+        html += '<div style="font-size:36px;width:56px;height:56px;display:flex;align-items:center;justify-content:center">🏅</div>';
+      }
+      html += '</div>';
+      html += '<div class="badge-full-name">' + b.name + '</div>';
+      html += '<div class="badge-full-desc">' + b.desc + '</div>';
+      html += '<div class="badge-rarity ' + rarityClass + '">' + b.rarity + '</div>';
+      if (earned) html += '<div style="font-size:10px;color:var(--accent-teal);font-weight:700">✓ EARNED</div>';
+      html += '</div>';
+    });
+    html += '</div></div></div>';
+  });
+  document.getElementById('badges-page-content').innerHTML = html;
+  loadLeaderboard('month');
+}
+
+function toggleBadgeCat(header) {
+  const chevron = header.querySelector('.badge-cat-chevron');
+  const body = header.nextElementSibling;
+  chevron.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+// ─── LEADERBOARD ──────────────────────────────────────
+async function loadLeaderboard(mode) {
+  const el = document.getElementById('leaderboard-list');
+  el.innerHTML = '<div class="empty">Loading...</div>';
+
+  let query = sb.from('members').select('id, name, profile_photo_url, points_earned_lifetime, points_balance').eq('is_active', true);
+  
+  // For monthly, we'd ideally query a monthly_points field — for now we use points_balance as proxy for month
+  // Both modes use lifetime for now; month mode shows balance as the metric
+  const field = mode === 'month' ? 'points_balance' : 'points_earned_lifetime';
+  const { data: members } = await query.order(field, { ascending: false }).limit(20);
+
+  if (!members?.length) { el.innerHTML = '<div class="empty">No leaderboard data yet</div>'; return; }
+
+  const rankColors = ['gold', 'silver', 'bronze'];
+  el.innerHTML = members.map((mem, i) => {
+    const isYou = mem.id === currentMember.id;
+    const rank = i + 1;
+    const rankClass = rankColors[i] || '';
+    const pts = mode === 'month' ? mem.points_balance : mem.points_earned_lifetime;
+    const initials = mem.name ? mem.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0,2) : '?';
+    const avatarHtml = mem.profile_photo_url
+      ? '<img src="' + mem.profile_photo_url + '" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'">' 
+      : initials;
+    return '<div class="lb-row">' +
+      '<div class="lb-rank ' + rankClass + '">' + rank + '</div>' +
+      '<div class="lb-avatar">' + avatarHtml + '</div>' +
+      '<div class="lb-name ' + (isYou ? 'you' : '') + '">' + mem.name + (isYou ? ' (You)' : '') + '</div>' +
+      '<div class="lb-pts ' + (isYou ? 'you' : '') + '">' + (pts || 0).toLocaleString() + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function setLeaderboard(mode, btn) {
+  document.querySelectorAll('.lb-toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadLeaderboard(mode);
+}
+
+// ─── ON TAP ───────────────────────────────────────────
+async function loadTapList() {
+  const { data: beers } = await sb.from('beers').select('*').eq('is_on_tap', true).eq('retired', false).order('is_new_release', { ascending: false });
+  const beerView = document.getElementById('tap-beer-view');
+  if (!beers?.length) { beerView.innerHTML = '<div class="empty">No beers on tap</div>'; }
+  else {
+    beerView.innerHTML = beers.map(b => {
+      const thumb = b.image_url
+        ? `<img class="beer-thumb" src="${b.image_url}" onerror="this.outerHTML='<div class=\\'beer-thumb-placeholder\\'>🍺</div>'">`
+        : `<div class="beer-thumb-placeholder">🍺</div>`;
+      return `<div class="beer-card ${b.is_new_release ? 'new-release' : ''}">
+        <div class="beer-card-header">
+          <div class="beer-card-left">
+            ${thumb}
+            <div>
+              <div class="beer-name">${b.name}${b.is_new_release ? '<span class="badge-new">New Release</span>' : ''}</div>
+              <div class="beer-style">${b.style}</div>
+            </div>
+          </div>
+          ${b.abv ? `<div class="beer-abv">${b.abv}%</div>` : ''}
+        </div>
+        ${b.description ? `<div class="beer-desc">${b.description}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  const { data: menu } = await sb.from('menu_items').select('*').eq('is_available', true);
+  const wineGlass = menu?.filter(i => i.category === 'Wine by the Glass') || [];
+  const wineBottle = menu?.filter(i => i.category === 'Wine by the Bottle') || [];
+  const naBeers = menu?.filter(i => i.category === 'N/A Beer') || [];
+  const naOther = menu?.filter(i => i.category === 'N/A Options') || [];
+
+  document.getElementById('tap-wine-view').innerHTML =
+    (wineGlass.length ? `<div class="section-header">By the Glass</div>` + wineGlass.map(wineCard).join('') : '') +
+    (wineBottle.length ? `<div class="section-header">By the Bottle</div>` + wineBottle.map(wineCard).join('') : '');
+
+  document.getElementById('tap-na-view').innerHTML =
+    (naBeers.length ? `<div class="section-header">N/A Beer</div>` + naBeers.map(naCard).join('') : '') +
+    (naOther.length ? `<div class="section-header">Other Beverages</div>` + naOther.map(naCard).join('') : '');
+}
+
+function wineCard(w) {
+  const prices = [];
+  if (w.glass_price) prices.push(`Glass $${w.glass_price}`);
+  if (w.bottle_price) prices.push(`Bottle $${w.bottle_price}`);
+  return `<div class="beer-card">
+    <div class="beer-card-header">
+      <div class="beer-card-left">
+        <div class="beer-thumb-placeholder">🍷</div>
+        <div><div class="beer-name">${w.name}</div><div class="beer-style">${w.item_type || ''}</div></div>
+      </div>
+    </div>
+    ${w.description ? `<div class="beer-desc">${w.description}</div>` : ''}
+    ${prices.length ? `<div class="wine-price">${prices.join(' · ')}</div>` : ''}
+  </div>`;
+}
+
+function naCard(n) {
+  return `<div class="beer-card">
+    <div class="beer-card-header">
+      <div class="beer-card-left">
+        <div class="beer-thumb-placeholder">🥤</div>
+        <div>
+          <div class="beer-name">${n.name} <span class="badge-na">N/A</span></div>
+          ${n.item_type ? `<div class="beer-style">${n.item_type}</div>` : ''}
+        </div>
+      </div>
+      ${n.glass_price ? `<div class="beer-abv" style="color:var(--accent-teal)">$${n.glass_price}</div>` : ''}
+    </div>
+    ${n.description ? `<div class="beer-desc">${n.description}</div>` : ''}
+  </div>`;
+}
+
+function setTapView(view, btn) {
+  document.querySelectorAll('.tap-toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tap-beer-view').style.display = view === 'beer' ? 'block' : 'none';
+  document.getElementById('tap-wine-view').style.display = view === 'wine' ? 'block' : 'none';
+  document.getElementById('tap-na-view').style.display = view === 'na' ? 'block' : 'none';
+}
+
+// ─── EVENTS ───────────────────────────────────────────
+async function loadEvents() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data } = await sb.from('events').select('*').gte('event_date', today).order('event_date').limit(20);
+  const el = document.getElementById('events-list');
+  if (!data?.length) { el.innerHTML = `<div class="empty">No upcoming events — check back soon!</div>`; return; }
+  el.innerHTML = data.map(e => {
+    const d = new Date(e.event_date + 'T12:00:00');
+    const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    const day = d.getDate();
+    const time = e.start_time ? formatTime12(e.start_time) : '';
+    return `<div class="event-card">
+      <div class="event-date-block">
+        <div class="event-month">${month}</div>
+        <div class="event-day">${day}</div>
+      </div>
+      <div class="event-details">
+        <div class="event-title">${e.title}</div>
+        <div class="event-meta">${e.event_type}${time ? ' · ' + time : ''}</div>
+        ${e.description ? `<div class="event-meta" style="margin-top:4px">${e.description}</div>` : ''}
+        <div class="event-pts">+${e.points_awarded} pts for attending</div>
+        ${e.is_beer_release ? '<span class="event-release-badge">🍺 Beer Release</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── REWARDS — collapsible ─────────────────────────────
+function renderRewards() {
+  const m = currentMember;
+  const bal = m.points_balance || 0;
+  const isPaid = ['Mug Club', 'Coffee Club', 'Full Pour'].includes(m.tier);
+
+  const tiers = [
+    { num: 1, label: 'Treasure Box', range: '100–200 pts', all: true, items: [
+      {name:'Treasure box pick', pts:100}, {name:'Sticker pack', pts:100},
+      {name:'Snack item', pts:150}, {name:'Koozie', pts:150}, {name:'Partner discount coupon', pts:150}
+    ]},
+    { num: 2, label: 'Social Currency', range: '250–500 pts', all: true, items: [
+      {name:'Pick a trivia category', pts:250}, {name:'Pick music bingo theme', pts:250},
+      {name:'Wall of Regulars — 1 month', pts:300}, {name:'LVBC pint glass', pts:400},
+      {name:'Free snack up to $10', pts:400}, {name:'Early RSVP access', pts:350},
+      {name:'Choose next staff pick', pts:500}
+    ]},
+    { num: 3, label: 'Real Merch', range: '750–1000 pts', all: false, items: [
+      {name:'LVBC t-shirt', pts:750}, {name:'LVBC hat/cap', pts:750},
+      {name:'Growler (branded)', pts:750}, {name:'LVBC hoodie', pts:1000},
+      {name:'LVBC U There — $10 off', pts:800}
+    ]},
+    { num: 4, label: 'Insider Access', range: '1500–2500 pts', all: false, items: [
+      {name:'Private tasting + 3 friends', pts:1500}, {name:'VIP table at special event', pts:1500},
+      {name:'Custom LVBC item', pts:2000}, {name:'LVBC U There — comped ticket', pts:2000},
+      {name:'Host private taproom event', pts:2500}
+    ]},
+    { num: 5, label: 'Legacy', range: '5000+ pts', all: false, items: [
+      {name:'Limestone wall inscription', pts:5000}, {name:'Brew day experience', pts:5000},
+      {name:'Anniversary party invite', pts:5000}
+    ]}
+  ];
+
+  let html = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Balance: <strong style="color:var(--accent-teal);font-family:'Barlow Condensed',sans-serif;font-size:22px">${bal.toLocaleString()}</strong> pts</div>`;
+
+  tiers.forEach((t, idx) => {
+    const tierLocked = !t.all && !isPaid;
+    // Auto-open the first tier that has reachable items
+    const hasReachable = t.items.some(i => bal >= i.pts);
+    const isOpen = idx === 0 || hasReachable;
+
+    html += `<div class="rewards-tier">
+      <div class="rewards-tier-header" onclick="toggleTier(this)">
+        <div class="tier-header-left">
+          <div class="tier-dot" style="${tierLocked ? 'background:var(--text-muted)' : ''}"></div>
+          <div>
+            <div class="tier-header-label">Tier ${t.num} — ${t.label}</div>
+            <div class="tier-header-range">${t.range}</div>
+          </div>
+        </div>
+        <div class="tier-chevron ${isOpen ? 'open' : ''}">▼</div>
+      </div>
+      <div class="tier-body ${isOpen ? 'open' : ''}">`;
+
+    if (tierLocked) {
+      html += `<div style="padding:12px 4px;font-size:13px;color:var(--text-muted)">🔒 Requires paid membership (Mug Club, Coffee Club, or Full Pour)</div>`;
+    } else {
+      t.items.forEach(item => {
+        const canRedeem = bal >= item.pts;
+        html += `<div class="reward-item ${canRedeem ? '' : 'locked'}">
+          <div class="reward-name">${item.name}</div>
+          <div class="reward-pts ${canRedeem ? 'can-redeem' : 'locked'}">${item.pts.toLocaleString()} pts</div>
+        </div>`;
+      });
+    }
+    html += `</div></div>`;
+  });
+
+  document.getElementById('rewards-content').innerHTML = html;
+}
+
+function toggleTier(header) {
+  const chevron = header.querySelector('.tier-chevron');
+  const body = header.nextElementSibling;
+  chevron.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+// ─── PROFILE ──────────────────────────────────────────
+function populateProfile() {
+  const m = currentMember;
+  document.getElementById('prof-name').value = m.name || '';
+  document.getElementById('prof-phone').value = m.phone || '';
+  document.getElementById('prof-birthday').value = m.birthday || '';
+  document.getElementById('comms-opt-in').checked = m.comms_opt_in !== false;
+  document.getElementById('comms-events').checked = m.comms_events !== false;
+  document.getElementById('comms-releases').checked = m.comms_new_releases !== false;
+  document.getElementById('comms-promos').checked = m.comms_promotions !== false;
+
+  // Avatar
+  const avatarDisplay = document.getElementById('profile-avatar-display');
+  if (m.profile_photo_url) {
+    avatarDisplay.innerHTML = `<img src="${m.profile_photo_url}" onerror="this.parentElement.innerHTML='<span style=\\'font-size:28px\\'>${getInitials(m.name)}</span>'">`;
+    // Also update header button
+    document.getElementById('header-avatar-btn').innerHTML = `<img src="${m.profile_photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.outerHTML='<svg width=\\'18\\' height=\\'18\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><path d=\\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\\'/><circle cx=\\'12\\' cy=\\'7\\' r=\\'4\\'/></svg>'">`;
+  } else {
+    avatarDisplay.innerHTML = `<span style="font-size:28px">${getInitials(m.name)}</span>`;
+  }
+
+  // Style chips
+  const saved = m.taste_profile ? m.taste_profile.split(';').filter(Boolean) : [];
+  document.getElementById('style-chips').innerHTML = BEER_STYLES.map(s =>
+    `<div class="style-chip ${saved.includes(s) ? 'selected' : ''}" onclick="this.classList.toggle('selected')">${s}</div>`
+  ).join('');
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+}
+
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop();
+  const path = `profile-photos/${currentMember.id}.${ext}`;
+  const { error } = await sb.storage.from('assets').upload(path, file, { upsert: true });
+  if (error) { showProfileAlert('error', 'Upload failed: ' + error.message); return; }
+  const { data: urlData } = sb.storage.from('assets').getPublicUrl(path);
+  const url = urlData.publicUrl + '?t=' + Date.now();
+  await sb.from('members').update({ profile_photo_url: url }).eq('id', currentMember.id);
+  currentMember.profile_photo_url = url;
+  populateProfile();
+  showProfileAlert('success', '✓ Photo updated');
+}
+
+async function saveProfile() {
+  const updates = {
+    name: document.getElementById('prof-name').value.trim(),
+    phone: document.getElementById('prof-phone').value.trim(),
+    birthday: document.getElementById('prof-birthday').value || null
+  };
+  const { error } = await sb.from('members').update(updates).eq('id', currentMember.id);
+  if (error) { showProfileAlert('error', 'Error saving: ' + error.message); return; }
+  Object.assign(currentMember, updates);
+  showProfileAlert('success', '✓ Profile updated');
+  renderCard();
+}
+
+async function saveStyles() {
+  const selected = [...document.querySelectorAll('.style-chip.selected')].map(el => el.textContent);
+  const profile = selected.join(';');
+  await sb.from('members').update({ taste_profile: profile }).eq('id', currentMember.id);
+  currentMember.taste_profile = profile;
+  showProfileAlert('success', '✓ Taste preferences saved');
+}
+
+async function saveComms() {
+  const updates = {
+    comms_opt_in: document.getElementById('comms-opt-in').checked,
+    comms_events: document.getElementById('comms-events').checked,
+    comms_new_releases: document.getElementById('comms-releases').checked,
+    comms_promotions: document.getElementById('comms-promos').checked
+  };
+  await sb.from('members').update(updates).eq('id', currentMember.id);
+  Object.assign(currentMember, updates);
+}
+
+function showChangePIN() {
+  const current = prompt('Enter your current PIN:');
+  if (String(currentMember.pin) !== String(current)) { alert('Incorrect PIN'); return; }
+  const newPin = prompt('Enter your new 4-digit PIN:');
+  if (!newPin || newPin.length !== 4 || isNaN(newPin)) { alert('PIN must be 4 digits'); return; }
+  sb.from('members').update({ pin: newPin }).eq('id', currentMember.id).then(() => {
+    currentMember.pin = newPin;
+    alert('PIN updated');
+  });
+}
+
+// ─── NAVIGATION ───────────────────────────────────────
+function showTab(tab) {
+  document.querySelectorAll('.tab-screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  const navEl = document.getElementById('nav-' + tab);
+  if (navEl) navEl.classList.add('active');
+  const titles = { card:'LVBC', activity:'Activity', tap:'On Tap', events:'Events', rewards:'Rewards', profile:'My Profile', badges:'My Badges' };
+  document.getElementById('app-header-title').textContent = titles[tab] || 'LVBC';
+  if (tab === 'activity') loadActivity();
+  if (tab === 'rewards') renderRewards();
+  if (tab === 'badges') renderBadgesPage();
+}
+
+// ─── HELPERS ──────────────────────────────────────────
+function tierClass(tier) {
+  const map = { 'Free':'tier-free', 'Mug Club':'tier-mug', 'Coffee Club':'tier-coffee', 'Full Pour':'tier-fullpour' };
+  return map[tier] || 'tier-free';
+}
+
+function formatDate(ts) {
+  return new Date(ts).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+
+function formatTime12(t) {
+  const [h, m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+}
+
+function showLoginAlert(type, msg) {
+  const el = document.getElementById('login-alert');
+  el.textContent = msg; el.className = 'alert visible alert-' + type;
+}
+
+function showPinAlert(type, msg) {
+  const el = document.getElementById('pin-alert');
+  el.textContent = msg; el.className = 'alert visible alert-' + type;
+}
+
+function showProfileAlert(type, msg) {
+  const el = document.getElementById('profile-alert');
+  el.textContent = msg; el.className = 'alert visible alert-' + type;
+  setTimeout(() => el.classList.remove('visible'), 3000);
+}
+</script>
+</body>
+</html>
